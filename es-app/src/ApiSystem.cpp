@@ -1487,8 +1487,15 @@ bool ApiSystem::getBrightness(std::vector<BrightnessDevice>& values)
 
 		int max = Utils::String::toInteger(Utils::FileSystem::readAllText(maxBrightnessPath));
 		if (max != 0) {
+#if defined(ROCKNIX)
+		  auto result = executeScript("brightness getPercent", nullptr);
+		  int brightnessVal = Utils::String::toInteger(Utils::String::trim(result.first));
+		  LOG(LogInfo) << "ApiSystem::getBrightness > brightness value resolved to " << brightnessVal;
+		  b.value = brightnessVal;
+#else
 		  int value = Utils::String::toInteger(Utils::FileSystem::readAllText(brightnessPath));
 		  b.value = (uint32_t) ((value / (float)max * 100.0f) + 0.5f);
+#endif
 		  values.push_back(b);
 		}
 	      }
@@ -1496,6 +1503,13 @@ bool ApiSystem::getBrightness(std::vector<BrightnessDevice>& values)
 	return values.size() > 0;
 }
 
+#if defined(ROCKNIX)
+void ApiSystem::setBrightness(BrightnessDevice bd)
+{
+	// Use ROCKNIX brightness script for consistency
+	executeScript("brightness set " + std::to_string(bd.value) + " 2>&1 >/dev/null");
+}
+#else
 void ApiSystem::setBrightness(BrightnessDevice bd)
 {
 #if WIN32	
@@ -1516,6 +1530,7 @@ void ApiSystem::setBrightness(BrightnessDevice bd)
 	std::string content = std::to_string((uint32_t) percent) + "\n";
 	Utils::FileSystem::writeAllText(bd.path, content);
 }
+#endif
 
 static std::string LED_COLOUR_NAME;
 static std::string LED_BRIGHTNESS_VALUE;
